@@ -90,6 +90,8 @@ library
     CPU.Decoder
     CPU.ISA
     CPU.StateMachine
+    Common.Common
+    HDL.Common
   default-language: Haskell2010
 
 -- Builds the executable 'clash', with mollusc-small project in scope
