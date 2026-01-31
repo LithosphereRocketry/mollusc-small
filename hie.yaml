@@ -1,0 +1,12 @@
+cradle:
+  cabal:
+    - path: "./src"
+      component: "lib:mollusc-small"
+    - path: "./tests/doctests.hs"
+      component: "mollusc-small:doctests"
+    - path: "./tests"
+      component: "mollusc-small:test-library"
+    - path: "./bin/Clashi.hs"
+      component: "mollusc-small:exe:clashi"
+    - path: "./bin/Clash.hs"
+      component: "mollusc-small:exe:clash"
