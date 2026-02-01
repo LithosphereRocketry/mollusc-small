@@ -9,7 +9,6 @@ import GHC.IO (unsafePerformIO)
 import qualified Data.ByteString as BS
 import qualified Data.List as List
 import qualified Data.Text.IO as Tx
-import qualified Control.Exception as Exc
 
 verifyOutput :: [Unsigned 8] -> [(Maybe (Unsigned 8), Bool)] -> Assertion
 verifyOutput _ [] = assertFailure "Program did not terminate"
