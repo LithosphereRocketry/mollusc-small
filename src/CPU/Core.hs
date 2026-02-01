@@ -1,10 +1,12 @@
 module CPU.Core where
 
+import HDL.Common
 import Clash.Prelude
 import CPU.StateMachine
 import CPU.ISA
 import CPU.Decoder
 import CPU.ALU
+import GHC.Stack (HasCallStack)
 
 withZeroReg :: (Enum addr, HiddenClockResetEnable dom, NFDataX addr, Num addr, Eq addr, NFDataX a, Num a)
     => (SNat n -> Signal dom addr -> Signal dom (Maybe (addr, a)) -> Signal dom a)
@@ -66,33 +68,37 @@ toMemAddr StateFetch pc _ = pc
 toMemAddr StateM _ res = res
 toMemAddr _ _ _ = deepErrorX "Memory address of state with no memory access"
 
-mollusc :: (HiddenClockResetEnable dom)
+molluscGeneric :: (HasCallStack, HiddenClockResetEnable dom, ?doTrace :: Bool)
     => Signal dom (Unsigned 32) -- memory in
     -> Signal dom (
         Unsigned 32, -- memory address
         Maybe (Unsigned 32) -- memory write
     )
-mollusc mem_in = bundle (mem_addr, mem_out)
+molluscGeneric mem_in =
+        bundle (mem_addr, mem_out)
     where
-        pc = regEn 0 (writePC <$> newState) res
-        ir = regEn 0 (writeIR <$> newState) mem_in
+        pc = tr "PC" $ regEn 0x8000 (writePC <$> newState) res
+        ir = tr "IR" $ regEn 0 (writeIR <$> newState) mem_in
         decode = decoder <$> ir
         state = register StateAdvance newState
         newState = nextState <$> state <*> decode <*> pred_val
 
-        pred_val = xor
+        pred_val = tr "predicate" $ xor
             <$> (1 .==. predicatefile (ipred <$> decode) (toWritebackPred <$> newState <*> decode <*> pred_res))
             <*> (ipinv <$> decode)
 
-        read_addr = readReg <$> newState <*> decode
+        read_addr = tr "reg_read_addr" $ readReg <$> newState <*> decode
 
-        a = regMaybe (deepErrorX "Uninitialized A value") ((toWriteA . writeA <$> newState) <*> pc <*> reg_val)
-        b = regMaybe (deepErrorX "Uninitialized B value") ((toWriteB <$> (writeB <$> newState <*> decode)) <*> reg_val)
-        q = regMaybe (deepErrorX "Uninitialized Q value") ((toWriteQ . writeQ <$> newState) <*> res <*> mem_in)
+        a = tr "tmpA" $ regMaybe (deepErrorX "Uninitialized A value")
+                ((toWriteA . writeA <$> newState) <*> pc <*> reg_val)
+        b = tr "tmpB" $ regMaybe (deepErrorX "Uninitialized B value")
+                ((toWriteB <$> (writeB <$> newState <*> decode)) <*> reg_val)
+        q = tr "tmpQ" $ regMaybe (deepErrorX "Uninitialized Q value")
+                ((toWriteQ . writeQ <$> newState) <*> res <*> mem_in)
 
-        pred_res = comparator . compOp . itype <$> decode <*> a <*> b
-        res = alu . aluOp . itype <$> decode <*> a <*> b
-        reg_val = regfile read_addr (toWriteback <$>
+        pred_res = tr "pred_result" $ comparator . compOp . itype <$> decode <*> a <*> b
+        res = tr "result" $ alu . aluOp . itype <$> decode <*> a <*> b
+        reg_val = tr "reg_read_value" $ regfile read_addr (toWriteback <$>
             (writeReg <$> state <*> newState <*> decode)
             <*> res
             <*> mem_in
@@ -103,3 +109,18 @@ mollusc mem_in = bundle (mem_addr, mem_out)
             (Just <$> reg_val)
             (pure Nothing)
 
+mollusc ::(HasCallStack, HiddenClockResetEnable dom)
+    => Signal dom (Unsigned 32) -- memory in
+    -> Signal dom (
+        Unsigned 32, -- memory address
+        Maybe (Unsigned 32) -- memory write
+    )
+mollusc = let ?doTrace = False in molluscGeneric
+
+molluscTr :: (HasCallStack, HiddenClockResetEnable dom)
+    => Signal dom (Unsigned 32) -- memory in
+    -> Signal dom (
+        Unsigned 32, -- memory address
+        Maybe (Unsigned 32) -- memory write
+    )
+molluscTr = let ?doTrace = True in molluscGeneric

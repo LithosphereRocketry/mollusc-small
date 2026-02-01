@@ -2,6 +2,7 @@ module CPU.Decoder where
 
 import CPU.ISA
 import Clash.Prelude
+import GHC.Stack (HasCallStack)
 
 data ASource = AZero | AReg (Unsigned 4) | PC
     deriving (Eq, Show)
@@ -47,8 +48,8 @@ typeDecoder $(bitPattern "...._0000_0011_...._...._1..._...._....") = InstrTypeS
 typeDecoder $(bitPattern "...._...._0010_0000_...._1..._...._....") = InstrTypeJx InstrJx
 typeDecoder _ = InstrTypeInvalid
 
-decoder ::
-       Unsigned 32
+decoder :: (HasCallStack)
+    => Unsigned 32
     -> DecodeResult
 decoder instr = DecodeResult {
         ipred = ipred,

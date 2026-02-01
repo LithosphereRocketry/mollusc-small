@@ -22,6 +22,7 @@ common common-options
     DerivingStrategies
     FlexibleContexts
     InstanceSigs
+    ImplicitParams
     KindSignatures
     LambdaCase
     NamedFieldPuns
@@ -92,6 +93,7 @@ library
     CPU.StateMachine
     Common.Common
     HDL.Common
+    SOC.SimpleSOC
   default-language: Haskell2010
 
 -- Builds the executable 'clash', with mollusc-small project in scope
@@ -110,16 +112,26 @@ executable clashi
     ghc-options: -dynamic
   build-depends: base, clash-ghc, mollusc-small
 
-test-suite doctests
-  type:             exitcode-stdio-1.0
+-- test-suite doctests
+--   type:             exitcode-stdio-1.0
+--   default-language: Haskell2010
+--   main-is:          doctests.hs
+--   ghc-options:      -Wall -Wcompat -threaded
+--   hs-source-dirs:   tests
+--   build-depends:
+--     base,
+--     mollusc-small,
+--     doctest-parallel >= 0.2 && < 0.4,
+
+executable soctrace
+  import: common-options
   default-language: Haskell2010
-  main-is:          doctests.hs
-  ghc-options:      -Wall -Wcompat -threaded
-  hs-source-dirs:   tests
+  hs-source-dirs: tests
+  main-is: soctrace.hs
   build-depends:
-    base,
-    mollusc-small,
-    doctest-parallel >= 0.2 && < 0.4,
+    text,
+    bytestring,
+    mollusc-small
 
 test-suite test-library
   import: common-options
@@ -133,6 +145,8 @@ test-suite test-library
     Tests.CPU.SimpleSOC
   build-depends:
     Glob ^>=0.10.2,
+    bytestring,
+    text,
     mollusc-small,
     QuickCheck,
     clash-prelude-hedgehog,
