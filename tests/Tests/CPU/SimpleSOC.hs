@@ -7,6 +7,8 @@ import Tests.CPU.Common
 import Test.Tasty
 import qualified System.FilePath.Glob as Glob
 import CPU.Core (mollusc)
+import qualified Data.List as List
+import GHC.IO (unsafePerformIO)
 
 simpleSocReadMux :: Unsigned 32 -> Unsigned 32 -> Unsigned 32 -> Unsigned 32
 simpleSocReadMux romData ramData addr
@@ -28,8 +30,8 @@ simpleSoc fpath = bundle (ttyOut, terminate) where
     ttyOut = (resize <$>) <$> (gateMaybe <$> (memAddr .==. pure 0x01000000) <*> memWr)
     memRd = simpleSocReadMux <$> romRd <*> ramRd <*> memAddr
 
+
 socTests :: TestTree
-socTests = testGroup "Simple SOC" [
-    ]
-    where
-        fnames = Glob.glob "test-data/*_rom.bin"
+socTests = testGroup "Simple SOC" $ 
+    List.map (assemblyTest @System 100000 "small" simpleSoc)
+            $ unsafePerformIO $ Glob.glob "test-data/*_rom.bin"
