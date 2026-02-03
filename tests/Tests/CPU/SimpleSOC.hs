@@ -11,6 +11,6 @@ import qualified Data.List as List
 import GHC.IO (unsafePerformIO)
 
 socTests :: TestTree
-socTests = testGroup "Simple SOC" $ 
+socTests = testGroup "Simple SOC" $ let ?doTrace = False in
     List.map (assemblyTest @System 100000 "small" simpleSoc)
-            $ unsafePerformIO $ Glob.glob "test-data/*_rom.bin"
+            $ unsafePerformIO $ Glob.glob "test-data/*_rom.bin.txt"

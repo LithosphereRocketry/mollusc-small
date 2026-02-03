@@ -36,7 +36,7 @@ assemblyTest maxCycles socName soc romPath = testCase
                            $ unsafePerformIO
                            $ BS.readFile
 
-                           $ exchangeSuffix "_rom.bin" "_verify.bin" romPath
+                           $ exchangeSuffix "_rom.bin.txt" "_verify.bin" romPath
             outStream = sampleN maxCycles $ soc romPath
         verifyOutput referenceBytes outStream
             -- `Exc.catch`
@@ -54,4 +54,4 @@ assemblyTrace maxCycles soc romPath = do
     vcd <- dumpVCD (0, maxCycles) socOut []
     case vcd of
         Left msg -> error msg
-        Right contents -> Tx.writeFile (exchangeSuffix "_rom.bin" "_trace.vcd" romPath) contents
+        Right contents -> Tx.writeFile (exchangeSuffix "_rom.bin.txt" "_trace.vcd" romPath) contents

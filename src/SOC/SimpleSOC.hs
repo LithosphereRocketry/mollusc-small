@@ -4,6 +4,7 @@ import Clash.Prelude
 
 import CPU.Core (mollusc)
 import HDL.Common
+import Data.Maybe (isJust)
 
 simpleSocReadMux :: Unsigned 32 -> Unsigned 32 -> Unsigned 32 -> Unsigned 32
 simpleSocReadMux romData ramData addr
@@ -11,16 +12,24 @@ simpleSocReadMux romData ramData addr
     | addr < 0x10000 = romData
     | otherwise = deepErrorX "Contents of unmapped RAM"
 
-simpleSoc :: (HiddenClockResetEnable dom) => FilePath -> Signal dom (Maybe (Unsigned 8), Bool)
+truncateAddr :: Unsigned 32 -> Unsigned 32
+truncateAddr a = (a .&. 0x7FFF) `quot` 4
+
+toTtyOut :: Maybe (Unsigned 32) -> Unsigned 32 -> Maybe (Unsigned 8)
+toTtyOut (Just v) 0x01000000 = Just (resize v)
+toTtyOut _ _ = Nothing
+
+simpleSoc :: (?doTrace :: Bool, HiddenClockResetEnable dom) => FilePath -> Signal dom (Maybe (Unsigned 8), Bool)
 simpleSoc fpath = bundle (ttyOut, terminate) where
     (memAddr, memWr) = unbundle (mollusc memRd)
-    terminate = pure False
-    ramRd = blockRam1
+    muxAddr = register (deepErrorX "Memory read before startup") memAddr
+    terminate = tr "terminate" $ isJust <$> memWr .&&. memAddr .==. 0x01001000
+    ramRd = tr "ram_rd" $ blockRam1
         NoClearOnReset
         (SNat @32768)
         (deepErrorX "Uninitialized RAM data")
-        memAddr
+        (truncateAddr <$> memAddr)
         (makeWriteTuple <$> memAddr <*> memWr)
-    romRd = unpack <$> romFile (SNat @32768) fpath memAddr
-    ttyOut = (resize <$>) <$> (gateMaybe <$> (memAddr .==. pure 0x01000000) <*> memWr)
-    memRd = simpleSocReadMux <$> romRd <*> ramRd <*> memAddr
+    romRd = tr "rom_rd" $ unpack <$> romFile (SNat @32768) fpath (truncateAddr <$> memAddr)
+    ttyOut = tr "tty_out" $ toTtyOut <$> memWr <*> memAddr
+    memRd = simpleSocReadMux <$> romRd <*> ramRd <*> muxAddr

@@ -3,23 +3,34 @@ module CPU.StateMachine where
 import Clash.Prelude
 import CPU.Decoder
 import CPU.ISA
+import HDL.Common
 
-data ExeState = StateFetch | StateLui | StateLur | StateJ | StateA | StateB | StateM | StateAdvance
+data ExeState = StateDecode | StateLui | StateLur | StateJ | StateA | StateB | StateM | StateAdvance
     deriving (Eq, Show, Generic, NFDataX)
+
+traceName :: ExeState -> Unsigned 64
+traceName StateAdvance = embedLabel8 "advance"
+traceName StateDecode = embedLabel8 "fetch"
+traceName StateA = embedLabel8 "load_a"
+traceName StateB = embedLabel8 "load_b"
+traceName StateM = embedLabel8 "memory"
+traceName StateLui = embedLabel8 "lui"
+traceName StateLur = embedLabel8 "lur"
+traceName StateJ = embedLabel8 "jump"
 
 nextState :: ExeState -> DecodeResult -> Bool -> ExeState
 
-nextState StateFetch _ False = StateAdvance
-nextState StateFetch DecodeResult { itype = InstrTypeLong InstrLui } _ = StateLui
-nextState StateFetch DecodeResult { itype = InstrTypeLong InstrLur } _ = StateLur
-nextState StateFetch DecodeResult { itype = InstrTypeLong InstrJ } _ = StateJ
-nextState StateFetch _ _ = StateB
+nextState StateDecode _ False = StateAdvance
+nextState StateDecode DecodeResult { itype = InstrTypeLong InstrLui } _ = StateLui
+nextState StateDecode DecodeResult { itype = InstrTypeLong InstrLur } _ = StateLur
+nextState StateDecode DecodeResult { itype = InstrTypeLong InstrJ } _ = StateJ
+nextState StateDecode _ _ = StateA
 
-nextState StateAdvance _ _ = StateFetch
+nextState StateAdvance _ _ = StateDecode
 
-nextState StateLui _ _ = StateFetch
+nextState StateLui _ _ = StateDecode
 
-nextState StateLur _ _ = StateFetch
+nextState StateLur _ _ = StateDecode
 
 nextState StateJ _ _ = StateAdvance
 
@@ -27,14 +38,14 @@ nextState StateA DecodeResult { isrcb = BReg _ } _ = StateB
 nextState StateA DecodeResult { itype = InstrTypeJx _ } _ = StateAdvance
 nextState StateA DecodeResult { itype = InstrTypeLoad _ } _ = StateM
 nextState StateA DecodeResult { itype = InstrTypeStore _ } _ = StateM
-nextState StateA _ _ = StateFetch
+nextState StateA _ _ = StateDecode
 
 nextState StateB DecodeResult { itype = InstrTypeJx _ } _ = StateAdvance
 nextState StateB DecodeResult { itype = InstrTypeLoad _ } _ = StateM
 nextState StateB DecodeResult { itype = InstrTypeStore _ } _ = StateM
-nextState StateB _ _ = StateFetch
+nextState StateB _ _ = StateDecode
 
-nextState StateM _ _ = StateFetch
+nextState StateM _ _ = StateDecode
 
 data AMux = ASrcPC | ASrc0 | ASrcReg
     deriving (Eq, Show)
@@ -46,20 +57,21 @@ data QMux = QSrcRes | QSrcMem
 
 -- Entering state
 writeA :: ExeState -> Maybe AMux
-writeA StateFetch = Just ASrcPC
+writeA StateDecode = Just ASrcPC
 writeA StateLui = Just ASrc0
 writeA StateA = Just ASrcReg
 writeA StateM = Just ASrcReg
 writeA _ = Nothing
 
--- Entering state, previous decode result
-writeB :: ExeState -> DecodeResult -> Maybe BMux
-writeB s DecodeResult { isrcb = Imm x } | s `elem` [StateLui, StateLur, StateJ, StateA]
+-- Leaving state, entering state, decode result
+writeB :: ExeState -> ExeState -> DecodeResult -> Maybe BMux
+writeB _ StateDecode _ = Just (BSrcImm 4)
+writeB StateDecode _ DecodeResult { isrcb = Imm x }
     = Just (BSrcImm x)
-writeB s DecodeResult { isrcb = BReg _ } | s `elem` [StateLui, StateLur, StateJ, StateA]
+writeB StateDecode _ DecodeResult { isrcb = BReg _ }
     = Just (BSrcImm (deepErrorX "Immediate value of register operation"))
-writeB StateA DecodeResult { isrcb = BReg _ } = Just BSrcReg
-writeB _ _ = Nothing
+writeB _ StateB DecodeResult { isrcb = BReg _ } = Just BSrcReg
+writeB _ _ _ = Nothing
 
 -- Entering state (no mux, always coming from alu result)
 writeQ :: ExeState -> Maybe QMux
@@ -72,7 +84,7 @@ writeQ _ = Nothing
 
 -- Entering state
 writeIR :: ExeState -> Bool
-writeIR StateFetch = True
+writeIR StateDecode = True
 writeIR _ = False
 
 writePC :: ExeState -> Bool
@@ -84,11 +96,11 @@ writePC _ = False
 
 -- Leaving state, entering state, decode
 writeReg :: ExeState -> ExeState -> DecodeResult -> Maybe WBMux
-writeReg StateAdvance StateFetch _ = Nothing
-writeReg StateFetch StateAdvance _ = Nothing
+writeReg StateAdvance StateDecode _ = Nothing
+writeReg StateDecode StateAdvance _ = Nothing
 writeReg _ StateAdvance _ = Just WBSrcQ
-writeReg StateM StateFetch DecodeResult { itype = InstrTypeStore _ } = Nothing
-writeReg _ StateFetch _ = Just WBSrcRes
+writeReg StateM StateDecode DecodeResult { itype = InstrTypeStore _ } = Nothing
+writeReg _ StateDecode _ = Just WBSrcRes
 writeReg _ _ _ = Nothing
 
 -- Entering state, decode

@@ -1,22 +1,23 @@
 module CPU.ISA where
 
 import Prelude
+import Clash.Prelude
 
 data AccessSize = AccessSizeByte
                 | AccessSizeHalf
                 | AccessSizeWord
-    deriving (Eq, Show)
+    deriving (Eq, Show, Generic, NFDataX)
 
 data AccessMode = AccessControl
                 | AccessTLB
                 | AccessPhysical AccessSize
                 | AccessVirtual AccessSize
-    deriving (Eq, Show)
+    deriving (Eq, Show, Generic, NFDataX)
 
 data InstrTypeLong = InstrJ
                    | InstrLui
                    | InstrLur
-    deriving (Eq, Show)
+    deriving (Eq, Show, Generic, NFDataX)
 
 data InstrTypeNormal = InstrAdd
                      | InstrSub
@@ -26,16 +27,16 @@ data InstrTypeNormal = InstrAdd
                      | InstrSl
                      | InstrSr
                      | InstrSra
-    deriving (Eq, Show)
+    deriving (Eq, Show, Generic, NFDataX)
 
 data InstrTypeCompare = InstrLtu
                       | InstrLt
                       | InstrEq
                       | InstrBit
-    deriving (Eq, Show)
+    deriving (Eq, Show, Generic, NFDataX)
 
 data InstrTypeJx = InstrJx
-    deriving (Eq, Show)
+    deriving (Eq, Show, Generic, NFDataX)
 
 
 data InstrType = InstrTypeInvalid
@@ -45,4 +46,4 @@ data InstrType = InstrTypeInvalid
                | InstrTypeLoad AccessMode
                | InstrTypeStore AccessMode
                | InstrTypeJx InstrTypeJx
-    deriving (Eq, Show)
+    deriving (Eq, Show, Generic, NFDataX)

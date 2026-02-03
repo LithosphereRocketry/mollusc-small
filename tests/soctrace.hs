@@ -10,14 +10,13 @@ main = do
     args <- getArgs
     let tname = P.head args
         (ncycles :: Int) = read $ P.head $ P.tail args
-        romName = printf "test-data/%s_rom.bin" tname
+        romName = printf "test-data/%s_rom.bin.txt" tname
         vcdName = printf "test-data/%s_trace.vcd" tname
-        soc = exposeClockResetEnable (simpleSoc romName)
+        soc = exposeClockResetEnable (let ?doTrace = True in simpleSoc romName)
             systemClockGen
             systemResetGen
             enableGen
-    print ncycles 
-    result <- dumpVCD (0, ncycles) soc ["PC", "IR"]
+    result <- dumpVCD (0, ncycles) soc ["PC", "mem_in", "reg_read_addr"]
     case result of
         Left msg -> error msg
         Right contents -> T.writeFile vcdName contents

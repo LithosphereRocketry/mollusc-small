@@ -36,7 +36,7 @@ toWriteback (Just WBSrcQ) _ _ q  addr = Just (addr, q)
 
 -- next state
 toWritebackPred :: ExeState -> DecodeResult -> Bool -> Maybe (Unsigned 3, Unsigned 1)
-toWritebackPred StateFetch DecodeResult {
+toWritebackPred StateDecode DecodeResult {
         itype = InstrTypeCompare _,
         idest = DPred (addr, inv)
     } res = Just (addr, unpack (boolToBV (inv `xor` res)))
@@ -64,24 +64,38 @@ toWriteB (Just (BSrcImm imm)) _ = Just imm
 
 -- next state
 toMemAddr :: ExeState -> Unsigned 32 -> Unsigned 32 -> Unsigned 32
-toMemAddr StateFetch pc _ = pc
+toMemAddr StateDecode pc _ = pc
 toMemAddr StateM _ res = res
 toMemAddr _ _ _ = deepErrorX "Memory address of state with no memory access"
 
-molluscGeneric :: (HasCallStack, HiddenClockResetEnable dom, ?doTrace :: Bool)
+-- prev state, next state, instr type
+toALUOp :: ExeState -> ExeState -> InstrType -> AluOp
+toALUOp _ StateAdvance _ = OpAdd
+toALUOp StateDecode _ _ = OpAdd
+toALUOp StateJ _ _ = OpAdd
+toALUOp _ _ t = aluOp t
+
+mollusc :: (HasCallStack, HiddenClockResetEnable dom, ?doTrace :: Bool)
     => Signal dom (Unsigned 32) -- memory in
     -> Signal dom (
         Unsigned 32, -- memory address
         Maybe (Unsigned 32) -- memory write
     )
-molluscGeneric mem_in =
+mollusc mem_in =
         bundle (mem_addr, mem_out)
     where
+        mem_in_t = tr "mem_in" mem_in
         pc = tr "PC" $ regEn 0x8000 (writePC <$> newState) res
-        ir = tr "IR" $ regEn 0 (writeIR <$> newState) mem_in
-        decode = decoder <$> ir
         state = register StateAdvance newState
+
+        decodeIncoming = decoder <$> mem_in_t
+        decodeStored = regEn (deepErrorX "Type of unfetched instruction")
+                (state .==. pure StateDecode) decodeIncoming
+        decode = mux (state .==. pure StateDecode) decodeIncoming decodeStored
+        
+        !state_t = tr "state" $ traceName <$> state
         newState = nextState <$> state <*> decode <*> pred_val
+        !newState_t = tr "newState" $ traceName <$> newState
 
         pred_val = tr "predicate" $ xor
             <$> (1 .==. predicatefile (ipred <$> decode) (toWritebackPred <$> newState <*> decode <*> pred_res))
@@ -92,35 +106,19 @@ molluscGeneric mem_in =
         a = tr "tmpA" $ regMaybe (deepErrorX "Uninitialized A value")
                 ((toWriteA . writeA <$> newState) <*> pc <*> reg_val)
         b = tr "tmpB" $ regMaybe (deepErrorX "Uninitialized B value")
-                ((toWriteB <$> (writeB <$> newState <*> decode)) <*> reg_val)
+                ((toWriteB <$> (writeB <$> state <*> newState <*> decode)) <*> reg_val)
         q = tr "tmpQ" $ regMaybe (deepErrorX "Uninitialized Q value")
-                ((toWriteQ . writeQ <$> newState) <*> res <*> mem_in)
+                ((toWriteQ . writeQ <$> newState) <*> res <*> mem_in_t)
 
         pred_res = tr "pred_result" $ comparator . compOp . itype <$> decode <*> a <*> b
-        res = tr "result" $ alu . aluOp . itype <$> decode <*> a <*> b
+        res = tr "result" $ alu <$> (toALUOp <$> state <*> newState <*> (itype <$> decode)) <*> a <*> b
         reg_val = tr "reg_read_value" $ regfile read_addr (toWriteback <$>
             (writeReg <$> state <*> newState <*> decode)
             <*> res
             <*> mem_in
             <*> q
             <*> (toWriteAddr <$> decode))
-        mem_addr = toMemAddr <$> newState <*> pc <*> res
-        mem_out = mux (newState .==. pure StateM)
+        mem_addr = tr "mem_addr" $ toMemAddr <$> newState <*> pc <*> res
+        mem_out = tr "mem_out" $ mux (newState .==. pure StateM)
             (Just <$> reg_val)
             (pure Nothing)
-
-mollusc ::(HasCallStack, HiddenClockResetEnable dom)
-    => Signal dom (Unsigned 32) -- memory in
-    -> Signal dom (
-        Unsigned 32, -- memory address
-        Maybe (Unsigned 32) -- memory write
-    )
-mollusc = let ?doTrace = False in molluscGeneric
-
-molluscTr :: (HasCallStack, HiddenClockResetEnable dom)
-    => Signal dom (Unsigned 32) -- memory in
-    -> Signal dom (
-        Unsigned 32, -- memory address
-        Maybe (Unsigned 32) -- memory write
-    )
-molluscTr = let ?doTrace = True in molluscGeneric
