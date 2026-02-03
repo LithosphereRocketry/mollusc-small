@@ -92,13 +92,14 @@ mollusc mem_in =
         decodeStored = regEn (deepErrorX "Type of unfetched instruction")
                 (state .==. pure StateDecode) decodeIncoming
         decode = mux (state .==. pure StateDecode) decodeIncoming decodeStored
-        
+
         !state_t = tr "state" $ traceName <$> state
         newState = nextState <$> state <*> decode <*> pred_val
         !newState_t = tr "newState" $ traceName <$> newState
 
+        pred_write = tr "pred_wr" (toWritebackPred <$> newState <*> decode <*> pred_res)
         pred_val = tr "predicate" $ xor
-            <$> (1 .==. predicatefile (ipred <$> decode) (toWritebackPred <$> newState <*> decode <*> pred_res))
+            <$> (1 .==. predicatefile (ipred <$> decode) pred_write)
             <*> (ipinv <$> decode)
 
         read_addr = tr "reg_read_addr" $ readReg <$> newState <*> decode
@@ -112,12 +113,12 @@ mollusc mem_in =
 
         pred_res = tr "pred_result" $ comparator . compOp . itype <$> decode <*> a <*> b
         res = tr "result" $ alu <$> (toALUOp <$> state <*> newState <*> (itype <$> decode)) <*> a <*> b
-        reg_val = tr "reg_read_value" $ regfile read_addr (toWriteback <$>
-            (writeReg <$> state <*> newState <*> decode)
+        reg_write = tr "reg_write" $ toWriteback <$> (writeReg <$> state <*> newState <*> decode)
             <*> res
             <*> mem_in
             <*> q
-            <*> (toWriteAddr <$> decode))
+            <*> (toWriteAddr <$> decode)
+        reg_val = tr "reg_read_value" $ regfile read_addr reg_write
         mem_addr = tr "mem_addr" $ toMemAddr <$> newState <*> pc <*> res
         mem_out = tr "mem_out" $ mux (newState .==. pure StateM)
             (Just <$> reg_val)

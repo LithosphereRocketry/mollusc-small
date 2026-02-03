@@ -10,7 +10,7 @@ data ExeState = StateDecode | StateLui | StateLur | StateJ | StateA | StateB | S
 
 traceName :: ExeState -> Unsigned 64
 traceName StateAdvance = embedLabel8 "advance"
-traceName StateDecode = embedLabel8 "fetch"
+traceName StateDecode = embedLabel8 "decode"
 traceName StateA = embedLabel8 "load_a"
 traceName StateB = embedLabel8 "load_b"
 traceName StateM = embedLabel8 "memory"
