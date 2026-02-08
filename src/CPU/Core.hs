@@ -75,6 +75,11 @@ toALUOp StateDecode _ _ = OpAdd
 toALUOp StateJ _ _ = OpAdd
 toALUOp _ _ t = aluOp t
 
+-- next state, type, reg_val
+toMemOut :: ExeState -> InstrType -> Unsigned 32 -> Maybe (Unsigned 32)
+toMemOut StateM (InstrTypeStore _) val = Just val
+toMemOut _ _ _ = Nothing
+
 mollusc :: (HasCallStack, HiddenClockResetEnable dom, ?doTrace :: Bool)
     => Signal dom (Unsigned 32) -- memory in
     -> Signal dom (
@@ -111,7 +116,7 @@ mollusc mem_in =
         q = tr "tmpQ" $ regMaybe (deepErrorX "Uninitialized Q value")
                 ((toWriteQ . writeQ <$> newState) <*> res <*> mem_in_t)
 
-        pred_res = tr "pred_result" $ comparator . compOp . itype <$> decode <*> a <*> b
+        pred_res = tr "pred_result" $ (comparator . compOp . itype <$> decode) <*> a <*> b
         res = tr "result" $ alu <$> (toALUOp <$> state <*> newState <*> (itype <$> decode)) <*> a <*> b
         reg_write = tr "reg_write" $ toWriteback <$> (writeReg <$> state <*> newState <*> decode)
             <*> res
@@ -120,6 +125,4 @@ mollusc mem_in =
             <*> (toWriteAddr <$> decode)
         reg_val = tr "reg_read_value" $ regfile read_addr reg_write
         mem_addr = tr "mem_addr" $ toMemAddr <$> newState <*> pc <*> res
-        mem_out = tr "mem_out" $ mux (newState .==. pure StateM)
-            (Just <$> reg_val)
-            (pure Nothing)
+        mem_out = tr "mem_out" $ toMemOut <$> newState <*> (itype <$> decode) <*> reg_val

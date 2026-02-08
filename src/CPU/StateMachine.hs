@@ -100,6 +100,8 @@ writeReg StateAdvance StateDecode _ = Nothing
 writeReg StateDecode StateAdvance _ = Nothing
 writeReg _ StateAdvance _ = Just WBSrcQ
 writeReg StateM StateDecode DecodeResult { itype = InstrTypeStore _ } = Nothing
+writeReg StateM StateDecode DecodeResult { itype = InstrTypeLoad _ } = Just WBSrcMem
+writeReg _ StateDecode DecodeResult { idest = DPred _ } = Nothing
 writeReg _ StateDecode _ = Just WBSrcRes
 writeReg _ _ _ = Nothing
 

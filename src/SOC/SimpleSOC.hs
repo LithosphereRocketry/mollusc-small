@@ -19,6 +19,11 @@ toTtyOut :: Maybe (Unsigned 32) -> Unsigned 32 -> Maybe (Unsigned 8)
 toTtyOut (Just v) 0x01000000 = Just (resize v)
 toTtyOut _ _ = Nothing
 
+toRamWrite ::Unsigned 32 -> Maybe (Unsigned 32) -> Maybe (Unsigned 32, Unsigned 32)
+toRamWrite _ Nothing = Nothing
+toRamWrite addr (Just wr) | addr < 0x8000 = Just (truncateAddr addr, wr)
+toRamWrite _ _ = Nothing
+
 simpleSoc :: (?doTrace :: Bool, HiddenClockResetEnable dom) => FilePath -> Signal dom (Maybe (Unsigned 8), Bool)
 simpleSoc fpath = bundle (ttyOut, terminate) where
     (memAddr, memWr) = unbundle (mollusc memRd)
@@ -29,7 +34,7 @@ simpleSoc fpath = bundle (ttyOut, terminate) where
         (SNat @32768)
         (deepErrorX "Uninitialized RAM data")
         (truncateAddr <$> memAddr)
-        (makeWriteTuple <$> memAddr <*> memWr)
+        (tr "mem_wr" $ toRamWrite <$> memAddr <*> memWr)
     romRd = tr "rom_rd" $ unpack <$> romFile (SNat @32768) fpath (truncateAddr <$> memAddr)
     ttyOut = tr "tty_out" $ toTtyOut <$> memWr <*> memAddr
     memRd = simpleSocReadMux <$> romRd <*> ramRd <*> muxAddr

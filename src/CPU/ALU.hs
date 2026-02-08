@@ -29,13 +29,27 @@ compOp (InstrTypeCompare InstrEq) = CompEq
 compOp (InstrTypeCompare InstrBit) = CompBit
 compOp _ = deepErrorX "Comparison operation for instruction with undefined comparator mode"
 
+sl :: Unsigned 32 -> Unsigned 32 -> Unsigned 32
+sl a b | b < 32 = shiftL a (fromIntegral b)
+sl _ _ = deepErrorX "Undefined shift left past 32 bits"
+
+sr :: Unsigned 32 -> Unsigned 32 -> Unsigned 32
+sr a b | b < 32 = shiftR a (fromIntegral b)
+sr _ _ = deepErrorX "Undefined shift right past 32 bits"
+
+sra :: Unsigned 32 -> Unsigned 32 -> Unsigned 32
+sra a b | b < 32 = bitCoerce $ shiftR (bitCoerce a :: Signed 32) (fromIntegral b)
+sra _ _ = deepErrorX "Undefined arithemtic shift right past 32 bits"
+
 alu :: AluOp -> Unsigned 32 -> Unsigned 32 -> Unsigned 32
 alu OpAdd = (+)
 alu OpSub = (-)
 alu OpAnd = (.&.)
 alu OpOr = (.|.)
 alu OpXor = xor
-alu _ = deepErrorX "ALU operation not implemented"
+alu OpSl = sl
+alu OpSr = sr
+alu OpSra = sra
 
 comparator :: CompOp -> Unsigned 32 -> Unsigned 32 -> Bool
 comparator CompLtu a b = (<) a b

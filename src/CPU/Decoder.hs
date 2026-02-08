@@ -80,4 +80,5 @@ decoder instr = DecodeResult {
             _  -> MNone
         dest = case itype of
             InstrTypeStore _ -> DMem
+            InstrTypeCompare _ -> DPred (unpack (slice d26 d24 instr), bitToBool $ instr ! (27 :: Integer))
             _ -> DReg $ unpack (slice d27 d24 instr)

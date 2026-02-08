@@ -14,5 +14,5 @@ for fn in sys.argv[1:]:
                 n = int.from_bytes(bytes(list(word)), 'little')
                 o.write(f"{n:032b}\n")
             while words < 8192:
-                o.write(f"{0x12345678:032b}\n")
+                o.write(f"{0xdeadb105:032b}\n")
                 words += 1

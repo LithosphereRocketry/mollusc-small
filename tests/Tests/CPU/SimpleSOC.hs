@@ -12,5 +12,5 @@ import GHC.IO (unsafePerformIO)
 
 socTests :: TestTree
 socTests = testGroup "Simple SOC" $ let ?doTrace = False in
-    List.map (assemblyTest @System 100000 "small" simpleSoc)
+    List.map (assemblyTest @System 200000 "small" simpleSoc)
             $ unsafePerformIO $ Glob.glob "test-data/*_rom.bin.txt"
