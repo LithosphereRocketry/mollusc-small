@@ -91,6 +91,7 @@ library
     CPU.Decoder
     CPU.ISA
     CPU.StateMachine
+    CPU.ControlReg
     Common.Common
     HDL.Common
     SOC.SimpleSOC

@@ -51,7 +51,7 @@ data AMux = ASrcPC | ASrc0 | ASrcReg
     deriving (Eq, Show)
 data BMux = BSrcImm (Unsigned 32) | BSrcReg
     deriving (Eq, Show)
-data WBMux = WBSrcRes | WBSrcMem | WBSrcQ
+data WBMux = WBSrcRes | WBSrcMem | WBSrcCR | WBSrcQ
     deriving (Eq, Show)
 data QMux = QSrcRes | QSrcMem
 
@@ -100,6 +100,7 @@ writeReg StateAdvance StateDecode _ = Nothing
 writeReg StateDecode StateAdvance _ = Nothing
 writeReg _ StateAdvance _ = Just WBSrcQ
 writeReg StateM StateDecode DecodeResult { itype = InstrTypeStore _ } = Nothing
+writeReg StateM StateDecode DecodeResult { itype = InstrTypeLoad AccessControl } = Just WBSrcCR
 writeReg StateM StateDecode DecodeResult { itype = InstrTypeLoad _ } = Just WBSrcMem
 writeReg _ StateDecode DecodeResult { idest = DPred _ } = Nothing
 writeReg _ StateDecode _ = Just WBSrcRes

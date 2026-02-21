@@ -1,3 +1,4 @@
+{- HLINT ignore "Redundant bracket" -}
 module CPU.Decoder where
 
 import CPU.ISA
@@ -43,7 +44,9 @@ typeDecoder $(bitPattern "...._...._0010_0010_...._0..._...._....") = InstrTypeC
 typeDecoder $(bitPattern "...._...._0010_0011_...._0..._...._....") = InstrTypeCompare InstrBit
 
 typeDecoder $(bitPattern "...._...._0011_0000_...._0..._...._....") = InstrTypeLoad $ AccessPhysical AccessSizeWord
+typeDecoder $(bitPattern "...._...._0011_0111_...._0..._...._....") = InstrTypeLoad AccessControl
 typeDecoder $(bitPattern "...._0000_0011_...._...._1..._...._....") = InstrTypeStore $ AccessPhysical AccessSizeWord
+typeDecoder $(bitPattern "...._0111_0011_...._...._1..._...._....") = InstrTypeStore AccessControl
 
 typeDecoder $(bitPattern "...._...._0010_0000_...._1..._...._....") = InstrTypeJx InstrJx
 typeDecoder _ = InstrTypeInvalid

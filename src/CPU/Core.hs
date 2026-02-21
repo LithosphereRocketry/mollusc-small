@@ -6,6 +6,7 @@ import CPU.StateMachine
 import CPU.ISA
 import CPU.Decoder
 import CPU.ALU
+import CPU.ControlReg
 import GHC.Stack (HasCallStack)
 
 withZeroReg :: (Enum addr, HiddenClockResetEnable dom, NFDataX addr, Num addr, Eq addr, NFDataX a, Num a)
@@ -28,11 +29,12 @@ predicatefile :: (HiddenClockResetEnable dom)
 predicatefile = withZeroReg asyncRam (SNat @8)
 
 -- select, res, mem, q
-toWriteback :: Maybe WBMux -> Unsigned 32 -> Unsigned 32 -> Unsigned 32 -> Unsigned 4 -> Maybe (Unsigned 4, Unsigned 32)
-toWriteback Nothing _ _ _ _ = Nothing
-toWriteback (Just WBSrcRes) res _ _ addr = Just (addr, res)
-toWriteback (Just WBSrcMem) _ mem _ addr = Just (addr, mem)
-toWriteback (Just WBSrcQ) _ _ q  addr = Just (addr, q)
+toWriteback :: Maybe WBMux -> Unsigned 32 -> Unsigned 32 -> Unsigned 32 -> Unsigned 32 -> Unsigned 4 -> Maybe (Unsigned 4, Unsigned 32)
+toWriteback Nothing _ _ _ _ _ = Nothing
+toWriteback (Just WBSrcRes) res _ _ _ addr = Just (addr, res)
+toWriteback (Just WBSrcMem) _ mem _ _ addr = Just (addr, mem)
+toWriteback (Just WBSrcCR) _ _ cr _  addr = Just (addr, cr)
+toWriteback (Just WBSrcQ) _ _ _ q  addr = Just (addr, q)
 
 -- next state
 toWritebackPred :: ExeState -> DecodeResult -> Bool -> Maybe (Unsigned 3, Unsigned 1)
@@ -77,8 +79,12 @@ toALUOp _ _ t = aluOp t
 
 -- next state, type, reg_val
 toMemOut :: ExeState -> InstrType -> Unsigned 32 -> Maybe (Unsigned 32)
-toMemOut StateM (InstrTypeStore _) val = Just val
+toMemOut StateM (InstrTypeStore (AccessPhysical _)) val = Just val
 toMemOut _ _ _ = Nothing
+
+toCRWrite :: ExeState -> InstrType -> Unsigned 32 -> Maybe (Unsigned 32)
+toCRWrite StateM (InstrTypeStore AccessControl) val = Just val
+toCRWrite _ _ _ = Nothing
 
 mollusc :: (HasCallStack, HiddenClockResetEnable dom, ?doTrace :: Bool)
     => Signal dom (Unsigned 32) -- memory in
@@ -121,8 +127,12 @@ mollusc mem_in =
         reg_write = tr "reg_write" $ toWriteback <$> (writeReg <$> state <*> newState <*> decode)
             <*> res
             <*> mem_in
+            <*> cr_read
             <*> q
             <*> (toWriteAddr <$> decode)
         reg_val = tr "reg_read_value" $ regfile read_addr reg_write
         mem_addr = tr "mem_addr" $ toMemAddr <$> newState <*> pc <*> res
         mem_out = tr "mem_out" $ toMemOut <$> newState <*> (itype <$> decode) <*> reg_val
+
+        cr_write = toCRWrite <$> newState <*> (itype <$> decode) <*> reg_val
+        cr_read = tr "cr_read" $ controlRegs $ bundle (mem_addr, cr_write)
