@@ -135,4 +135,4 @@ mollusc mem_in =
         mem_out = tr "mem_out" $ toMemOut <$> newState <*> (itype <$> decode) <*> reg_val
 
         cr_write = toCRWrite <$> newState <*> (itype <$> decode) <*> reg_val
-        cr_read = tr "cr_read" $ controlRegs $ bundle (mem_addr, cr_write)
+        cr_read = tr "cr_read" $ controlRegs  mem_addr cr_write
