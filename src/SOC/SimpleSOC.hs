@@ -8,8 +8,8 @@ import Data.Maybe (isJust)
 
 simpleSocReadMux :: Unsigned 32 -> Unsigned 32 -> Unsigned 32 -> Unsigned 32
 simpleSocReadMux romData ramData addr
-    | addr < 0x8000 = ramData
-    | addr < 0x10000 = romData
+    | addr < 0x8000 = romData
+    | addr < 0x10000 = ramData
     | otherwise = deepErrorX "Contents of unmapped RAM"
 
 truncateAddr :: Unsigned 32 -> Unsigned 32
@@ -21,7 +21,7 @@ toTtyOut _ _ = Nothing
 
 toRamWrite ::Unsigned 32 -> Maybe (Unsigned 32) -> Maybe (Unsigned 32, Unsigned 32)
 toRamWrite _ Nothing = Nothing
-toRamWrite addr (Just wr) | addr < 0x8000 = Just (truncateAddr addr, wr)
+toRamWrite addr (Just wr) | addr >= 0x8000 && addr < 0x10000 = Just (truncateAddr addr, wr)
 toRamWrite _ _ = Nothing
 
 simpleSoc :: (?doTrace :: Bool, HiddenClockResetEnable dom) => FilePath -> Signal dom (Maybe (Unsigned 8), Bool)

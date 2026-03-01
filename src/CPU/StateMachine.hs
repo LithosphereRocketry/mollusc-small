@@ -4,8 +4,9 @@ import Clash.Prelude
 import CPU.Decoder
 import CPU.ISA
 import HDL.Common
+import Clash.Explicit.Verification (next)
 
-data ExeState = StateDecode | StateLui | StateLur | StateJ | StateA | StateB | StateM | StateAdvance
+data ExeState = StateDecode | StateLui | StateLur | StateJ | StateA | StateB | StateM | StateAdvance | StateVector | StateInit
     deriving (Eq, Show, Generic, NFDataX)
 
 traceName :: ExeState -> Unsigned 64
@@ -17,6 +18,8 @@ traceName StateM = embedLabel8 "memory"
 traceName StateLui = embedLabel8 "lui"
 traceName StateLur = embedLabel8 "lur"
 traceName StateJ = embedLabel8 "jump"
+traceName StateVector = embedLabel8 "vector"
+traceName StateInit = embedLabel8 "init"
 
 nextState :: ExeState -> DecodeResult -> Bool -> ExeState
 
@@ -47,6 +50,10 @@ nextState StateB _ _ = StateDecode
 
 nextState StateM _ _ = StateDecode
 
+nextState StateVector _ _ = StateDecode
+
+nextState StateInit _ _ = StateVector
+
 data AMux = ASrcPC | ASrc0 | ASrcReg
     deriving (Eq, Show)
 data BMux = BSrcImm (Unsigned 32) | BSrcReg
@@ -54,6 +61,7 @@ data BMux = BSrcImm (Unsigned 32) | BSrcReg
 data WBMux = WBSrcRes | WBSrcMem | WBSrcCR | WBSrcQ
     deriving (Eq, Show)
 data QMux = QSrcRes | QSrcMem
+data PCMux = PCSrcRes | PCSrcMem
 
 -- Entering state
 writeA :: ExeState -> Maybe AMux
@@ -87,12 +95,13 @@ writeIR :: ExeState -> Bool
 writeIR StateDecode = True
 writeIR _ = False
 
-writePC :: ExeState -> Bool
-writePC StateAdvance = True
-writePC StateLui = True
-writePC StateLur = True
-writePC StateA = True
-writePC _ = False
+writePC :: ExeState -> Maybe PCMux
+writePC StateAdvance = Just PCSrcRes
+writePC StateLui = Just PCSrcRes
+writePC StateLur = Just PCSrcRes
+writePC StateA = Just PCSrcRes
+writePC StateVector = Just PCSrcMem
+writePC _ = Nothing
 
 -- Leaving state, entering state, decode
 writeReg :: ExeState -> ExeState -> DecodeResult -> Maybe WBMux

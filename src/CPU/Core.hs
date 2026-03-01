@@ -86,6 +86,11 @@ toCRWrite :: ExeState -> InstrType -> Unsigned 32 -> Maybe (Unsigned 32)
 toCRWrite StateM (InstrTypeStore AccessControl) val = Just val
 toCRWrite _ _ _ = Nothing
 
+toWritePC :: Maybe PCMux -> Unsigned 32 -> Unsigned 32 -> Maybe (Unsigned 32)
+toWritePC (Just PCSrcRes) res _ = Just res
+toWritePC (Just PCSrcMem) _ mem = Just mem
+toWritePC Nothing _ _ = Nothing
+
 mollusc :: (HasCallStack, HiddenClockResetEnable dom, ?doTrace :: Bool)
     => Signal dom (Unsigned 32) -- memory in
     -> Signal dom (
@@ -96,7 +101,7 @@ mollusc mem_in =
         bundle (mem_addr, mem_out)
     where
         mem_in_t = tr "mem_in" mem_in
-        pc = tr "PC" $ regEn 0x8000 (writePC <$> newState) res
+        pc = tr "PC" $ regMaybe 0 ((toWritePC . writePC <$> newState) <*> res <*> mem_in_t)
         state = register StateAdvance newState
 
         decodeIncoming = decoder <$> mem_in_t
