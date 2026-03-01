@@ -65,10 +65,12 @@ toWriteB (Just BSrcReg) reg = Just reg
 toWriteB (Just (BSrcImm imm)) _ = Just imm
 
 -- next state
-toMemAddr :: ExeState -> Unsigned 32 -> Unsigned 32 -> Unsigned 32
-toMemAddr StateDecode pc _ = pc
-toMemAddr StateM _ res = res
-toMemAddr _ _ _ = deepErrorX "Memory address of state with no memory access"
+toMemAddr :: ExeState -> Unsigned 32 -> Unsigned 32 -> Unsigned 32 -> Unsigned 32
+toMemAddr StateVFetch _ _ _ = 0
+toMemAddr StateDecode pc _ _ = pc
+toMemAddr StateM _ res _ = res
+toMemAddr StateVJump _ _ memin = memin
+toMemAddr _ _ _ _ = deepErrorX "Memory address of state with no memory access"
 
 -- prev state, next state, instr type
 toALUOp :: ExeState -> ExeState -> InstrType -> AluOp
@@ -101,8 +103,9 @@ mollusc mem_in =
         bundle (mem_addr, mem_out)
     where
         mem_in_t = tr "mem_in" mem_in
-        pc = tr "PC" $ regMaybe 0 ((toWritePC . writePC <$> newState) <*> res <*> mem_in_t)
-        state = register StateAdvance newState
+        pc = tr "PC" $ regMaybe (deepErrorX "Uninitialized PC")
+            ((toWritePC . writePC <$> newState) <*> res <*> mem_in_t)
+        state = register StateInit newState
 
         decodeIncoming = decoder <$> mem_in_t
         decodeStored = regEn (deepErrorX "Type of unfetched instruction")
@@ -136,7 +139,7 @@ mollusc mem_in =
             <*> q
             <*> (toWriteAddr <$> decode)
         reg_val = tr "reg_read_value" $ regfile read_addr reg_write
-        mem_addr = tr "mem_addr" $ toMemAddr <$> newState <*> pc <*> res
+        mem_addr = tr "mem_addr" $ toMemAddr <$> newState <*> pc <*> res <*> mem_in_t
         mem_out = tr "mem_out" $ toMemOut <$> newState <*> (itype <$> decode) <*> reg_val
 
         cr_write = toCRWrite <$> newState <*> (itype <$> decode) <*> reg_val

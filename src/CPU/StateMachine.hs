@@ -6,10 +6,13 @@ import CPU.ISA
 import HDL.Common
 import Clash.Explicit.Verification (next)
 
-data ExeState = StateDecode | StateLui | StateLur | StateJ | StateA | StateB | StateM | StateAdvance | StateVector | StateInit
+data ExeState = StateInit | StateVFetch | StateVJump | StateDecode | StateLui | StateLur | StateJ | StateA | StateB | StateM | StateAdvance
     deriving (Eq, Show, Generic, NFDataX)
 
 traceName :: ExeState -> Unsigned 64
+traceName StateInit = embedLabel8 "init"
+traceName StateVFetch = embedLabel8 "vfetch"
+traceName StateVJump = embedLabel8 "vjump"
 traceName StateAdvance = embedLabel8 "advance"
 traceName StateDecode = embedLabel8 "decode"
 traceName StateA = embedLabel8 "load_a"
@@ -18,10 +21,14 @@ traceName StateM = embedLabel8 "memory"
 traceName StateLui = embedLabel8 "lui"
 traceName StateLur = embedLabel8 "lur"
 traceName StateJ = embedLabel8 "jump"
-traceName StateVector = embedLabel8 "vector"
-traceName StateInit = embedLabel8 "init"
 
 nextState :: ExeState -> DecodeResult -> Bool -> ExeState
+
+nextState StateInit _ _ = StateVFetch
+
+nextState StateVFetch _ _ = StateVJump
+
+nextState StateVJump _ _ = StateDecode
 
 nextState StateDecode _ False = StateAdvance
 nextState StateDecode DecodeResult { itype = InstrTypeLong InstrLui } _ = StateLui
@@ -49,10 +56,6 @@ nextState StateB DecodeResult { itype = InstrTypeStore _ } _ = StateM
 nextState StateB _ _ = StateDecode
 
 nextState StateM _ _ = StateDecode
-
-nextState StateVector _ _ = StateDecode
-
-nextState StateInit _ _ = StateVector
 
 data AMux = ASrcPC | ASrc0 | ASrcReg
     deriving (Eq, Show)
@@ -95,12 +98,13 @@ writeIR :: ExeState -> Bool
 writeIR StateDecode = True
 writeIR _ = False
 
+-- Entering state
 writePC :: ExeState -> Maybe PCMux
 writePC StateAdvance = Just PCSrcRes
 writePC StateLui = Just PCSrcRes
 writePC StateLur = Just PCSrcRes
 writePC StateA = Just PCSrcRes
-writePC StateVector = Just PCSrcMem
+writePC StateVJump = Just PCSrcMem
 writePC _ = Nothing
 
 -- Leaving state, entering state, decode
