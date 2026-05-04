@@ -1,0 +1,3 @@
+[submodule "mollusc-toolchain"]
+	path = mollusc-toolchain
+	url = git@github.com:LithosphereRocketry/mollusc-toolchain.git

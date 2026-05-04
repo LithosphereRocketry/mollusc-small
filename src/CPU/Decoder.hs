@@ -45,8 +45,8 @@ typeDecoder $(bitPattern "...._...._0010_0011_...._0..._...._....") = InstrTypeC
 
 typeDecoder $(bitPattern "...._...._0011_0000_...._0..._...._....") = InstrTypeLoad $ AccessPhysical AccessSizeWord
 typeDecoder $(bitPattern "...._...._0011_0111_...._0..._...._....") = InstrTypeLoad AccessControl
-typeDecoder $(bitPattern "...._0000_0011_...._...._1..._...._....") = InstrTypeStore $ AccessPhysical AccessSizeWord
-typeDecoder $(bitPattern "...._0111_0011_...._...._1..._...._....") = InstrTypeStore AccessControl
+typeDecoder $(bitPattern "...._...._0011_0000_...._1..._...._....") = InstrTypeStore $ AccessPhysical AccessSizeWord
+typeDecoder $(bitPattern "...._...._0011_0111_...._1..._...._....") = InstrTypeStore AccessControl
 
 typeDecoder $(bitPattern "...._...._0010_0000_...._1..._...._....") = InstrTypeJx InstrJx
 typeDecoder _ = InstrTypeInvalid
@@ -79,7 +79,7 @@ decoder instr = DecodeResult {
                 then Imm $ unpack $ signExtend (slice d9 d0 instr)
                 else BReg $ unpack $ slice d3 d0 instr
         sourceM = case itype of
-            InstrTypeStore _ -> MReg $ unpack (slice d19 d16 instr)
+            InstrTypeStore _ -> MReg $ unpack (slice d27 d24 instr)
             _  -> MNone
         dest = case itype of
             InstrTypeStore _ -> DMem
