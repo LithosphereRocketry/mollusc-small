@@ -72,11 +72,11 @@ common common-options
     -fno-unbox-small-strict-fields
     -fno-unbox-strict-fields
   build-depends:
+    aeson,
     base,
     Cabal,
-
-    -- clash-prelude will set suitable version bounds for the plugins
-    clash-prelude >= 1.8.4 && < 1.10,
+    clash-prelude,
+    clash-shockwaves,
     ghc-typelits-natnormalise,
     ghc-typelits-extra,
     ghc-typelits-knownnat

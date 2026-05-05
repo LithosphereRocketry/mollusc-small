@@ -105,16 +105,14 @@ mollusc mem_in =
         mem_in_t = tr "mem_in" mem_in
         pc = tr "PC" $ regMaybe (deepErrorX "Uninitialized PC")
             ((toWritePC . writePC <$> newState) <*> res <*> mem_in_t)
-        state = register StateInit newState
+        state = tr "state" $ register StateInit newState
 
-        decodeIncoming = decoder <$> mem_in_t
-        decodeStored = regEn (deepErrorX "Type of unfetched instruction")
+        decodeIncoming = tr "instr_in" $ decoder <$> mem_in_t
+        decodeStored = tr "instr" $ regEn (deepErrorX "Type of unfetched instruction")
                 (state .==. pure StateDecode) decodeIncoming
         decode = mux (state .==. pure StateDecode) decodeIncoming decodeStored
 
-        !state_t = tr "state" $ traceName <$> state
-        newState = nextState <$> state <*> decode <*> pred_val
-        !newState_t = tr "newState" $ traceName <$> newState
+        newState = tr "newState" $ nextState <$> state <*> decode <*> pred_val
 
         pred_write = tr "pred_wr" (toWritebackPred <$> newState <*> decode <*> pred_res)
         pred_val = tr "predicate" $ xor

@@ -1,8 +1,11 @@
 module HDL.Common where
 
-import Clash.Prelude
+import Clash.Prelude hiding (writeFile, dumpVCD, traceSignal)
 import Data.Typeable
 import Data.Char
+
+import Clash.Shockwaves.Trace
+import Clash.Shockwaves.Waveform
 
 gateMaybe :: Bool -> Maybe a -> Maybe a
 gateMaybe True (Just x) = Just x
@@ -11,7 +14,7 @@ gateMaybe _ _ = Nothing
 resizeMaybe :: (KnownNat a, KnownNat b, Resize t) => Maybe (t a) -> Maybe (t b)
 resizeMaybe a = resize <$> a
 
-tr :: (?doTrace :: Bool, BitPack a, NFDataX a, Typeable a, KnownDomain dom) => String -> Signal dom a -> Signal dom a
+tr :: (?doTrace :: Bool, NFDataX a, Waveform a, KnownDomain dom) => String -> Signal dom a -> Signal dom a
 tr name = if ?doTrace then traceSignal name else id
 
 embedLabel8 :: [Char] -> Unsigned 64

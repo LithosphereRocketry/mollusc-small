@@ -4,15 +4,16 @@ module CPU.Decoder where
 import CPU.ISA
 import Clash.Prelude
 import GHC.Stack (HasCallStack)
+import Clash.Shockwaves.Waveform
 
 data ASource = AZero | AReg (Unsigned 4) | PC
-    deriving (Eq, Show, Generic, NFDataX)
+    deriving (Eq, Show, Generic, NFDataX, BitPack, Waveform)
 data BSource = BReg (Unsigned 4) | Imm (Unsigned 32)
-    deriving (Eq, Show, Generic, NFDataX)
+    deriving (Eq, Show, Generic, NFDataX, BitPack, Waveform)
 data MSource = MNone | MReg (Unsigned 4)
-    deriving (Eq, Show, Generic, NFDataX)
+    deriving (Eq, Show, Generic, NFDataX, BitPack, Waveform)
 data Destination = DReg (Unsigned 4) | DPred (Unsigned 3, Bool) | DMem
-    deriving (Eq, Show, Generic, NFDataX)
+    deriving (Eq, Show, Generic, NFDataX, BitPack, Waveform)
 
 data DecodeResult = DecodeResult {
     ipred :: Unsigned 3,
@@ -22,7 +23,7 @@ data DecodeResult = DecodeResult {
     isrcb :: BSource,
     isrcm :: MSource,
     idest :: Destination
-} deriving (Generic, NFDataX)
+} deriving (Generic, NFDataX, BitPack, Waveform)
 
 typeDecoder :: Unsigned 32 -> InstrType
 typeDecoder $(bitPattern "...._...._01.._...._...._...._...._....") = InstrTypeLong InstrJ

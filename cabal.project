@@ -1,4 +1,4 @@
-with-compiler: ghc-9.6.7
+with-compiler: ghc-9.10.3
 packages:
   mollusc-small.cabal
 
@@ -6,3 +6,10 @@ write-ghc-environment-files: always
 
 -- Eliminates the need for `--enable-tests`, which is needed for HLS.
 tests: true
+
+source-repository-package
+  type: git
+  location: https://github.com/clash-lang/clash-shockwaves.git
+  tag: v1.0.0
+  subdir:
+    clash-shockwaves

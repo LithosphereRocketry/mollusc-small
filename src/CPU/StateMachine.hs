@@ -4,23 +4,10 @@ import Clash.Prelude
 import CPU.Decoder
 import CPU.ISA
 import HDL.Common
-import Clash.Explicit.Verification (next)
+import Clash.Shockwaves.Waveform
 
 data ExeState = StateInit | StateVFetch | StateVJump | StateDecode | StateLui | StateLur | StateJ | StateA | StateB | StateM | StateAdvance
-    deriving (Eq, Show, Generic, NFDataX)
-
-traceName :: ExeState -> Unsigned 64
-traceName StateInit = embedLabel8 "init"
-traceName StateVFetch = embedLabel8 "vfetch"
-traceName StateVJump = embedLabel8 "vjump"
-traceName StateAdvance = embedLabel8 "advance"
-traceName StateDecode = embedLabel8 "decode"
-traceName StateA = embedLabel8 "load_a"
-traceName StateB = embedLabel8 "load_b"
-traceName StateM = embedLabel8 "memory"
-traceName StateLui = embedLabel8 "lui"
-traceName StateLur = embedLabel8 "lur"
-traceName StateJ = embedLabel8 "jump"
+    deriving (Eq, Show, Generic, NFDataX, BitPack, Waveform)
 
 nextState :: ExeState -> DecodeResult -> Bool -> ExeState
 
